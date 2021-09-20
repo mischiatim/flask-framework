@@ -199,7 +199,7 @@ def stock_query_viz_app(doc):
     doc.theme = Theme(filename="theme.yaml")
 
 # can't use shortcuts here, since we are passing to low level BokehTornado
-bkapp = Application(FunctionHandler(stock_query_viz_app))
+stock_query_viz_app = Application(FunctionHandler(stock_query_viz_app))
 
 # This is so that if this app is run using something like "gunicorn -w 4" then
 # each process will listen on its own port

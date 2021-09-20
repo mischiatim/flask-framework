@@ -34,5 +34,11 @@ A [finished example](https://lemurian.herokuapp.com) that demonstrates some basi
 - Some good references for Flask: [This article](https://realpython.com/blog/python/python-web-applications-with-flask-part-i/), especially the links in "Starting off", and [this tutorial](https://github.com/bev-a-tron/MyFlaskTutorial).
 
 Note: I followed the instructions in:
-https://github.com/bokeh/bokeh/blob/2.4.0/examples/howto/server_embed/flask_embed.py 
-This version must be run by calling 'python stock_query_viz_app_flask_embed.py' and for local testing opening http://localhost:8000/ in a web browser.
+https://github.com/bokeh/bokeh/blob/2.4.0/examples/howto/server_embed/flask_gunicorn_embed.py
+to produce the version of the Flask app for Heroku deployment.
+This version must be run by calling 'gunicorn -w 4 stock_query_viz_app_flask_gunicorn_embed:app' 
+
+I also followed the instructions in:
+https://github.com/bokeh/bokeh/blob/2.4.0/examples/howto/server_embed/flask_embed.py
+to produce a version of the Flask app for local testing. 
+This version must be run by calling 'python stock_query_viz_app_flask_embed.py' and opening http://localhost:8000/ in a web browser.
