@@ -57,7 +57,7 @@ def stock_query_viz_app(doc):
 
             #I will give it a certain number of tries on each request, with increasing delay time, in case there is too much traffic
             
-            num_request_attempts = 20
+            num_request_attempts = 100 #20
             
             attempts = 0
             
@@ -195,8 +195,8 @@ def stock_query_viz_app(doc):
     
     doc.add_root(layout)
     
-    #The following theme has gray background with white dashed grid lines
-    doc.theme = Theme(filename="theme.yaml")
+    # #The following theme has gray background with white dashed grid lines
+    #doc.theme = Theme(filename="theme.yaml")
 
 # can't use shortcuts here, since we are passing to low level BokehTornado
 stock_query_viz_app = Application(FunctionHandler(stock_query_viz_app))
