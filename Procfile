@@ -1,1 +1,1 @@
-web: gunicorn stock_query_viz_app_flask_embed:app
+web: gunicorn stock_query_viz_app_flask_gunicorn_embed:app
