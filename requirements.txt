@@ -11,3 +11,4 @@ numpy==1.18.5
 markupsafe==1.1.1
 jinja2==2.11.2
 werkzeug==1.0.1
+colorama==0.4.4
