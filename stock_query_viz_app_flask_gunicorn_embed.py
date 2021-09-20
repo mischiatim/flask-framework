@@ -195,8 +195,8 @@ def stock_query_viz_app(doc):
     
     doc.add_root(layout)
     
-    # #The following theme has gray background with white dashed grid lines
-    #doc.theme = Theme(filename="theme.yaml")
+    #The following theme has gray background with white dashed grid lines
+    doc.theme = Theme(filename="theme.yaml")
 
 # can't use shortcuts here, since we are passing to low level BokehTornado
 stock_query_viz_app = Application(FunctionHandler(stock_query_viz_app))
