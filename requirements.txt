@@ -1,7 +1,6 @@
 flask
 gunicorn
 requests
-tornado
 bokeh
 pandas
 numpy
