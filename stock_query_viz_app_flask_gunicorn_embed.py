@@ -28,15 +28,6 @@ import os
 import pandas as pd
 from pandas.tseries.holiday import USFederalHolidayCalendar
 
-if __name__ == '__main__':
-    print('This script is intended to be run with gunicorn. e.g.')
-    print()
-    print('    gunicorn -w 4 flask_gunicorn_embed:app')
-    print()
-    print('will start the app on four processes')
-    import sys
-    sys.exit()
-    
 
 app = Flask(__name__)
 
@@ -57,11 +48,11 @@ def stock_query_viz_app(doc):
 
             #I will give it a certain number of tries on each request, with increasing delay time, in case there is too much traffic
             
-            num_request_attempts = 100 #20
+            num_request_attempts = 20
             
             attempts = 0
             
-            timeout = 1
+            timeout = 3 #1
             
             while attempts < num_request_attempts:
                 
@@ -226,6 +217,18 @@ t = Thread(target=bk_worker)
 t.daemon = True
 t.start()
 
+
+if __name__ == '__main__':
+    print('This script is intended to be run with gunicorn. e.g.')
+    print()
+    print('    gunicorn -w 4 flask_gunicorn_embed:app')
+    print()
+    print('will start the app on four processes')
+    import sys
+    sys.exit()
+    
+
+    
 
 #Original template from TDI:
 
