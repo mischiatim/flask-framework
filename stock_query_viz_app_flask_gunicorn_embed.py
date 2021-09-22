@@ -205,7 +205,8 @@ def stock_query_viz_app_page():
 def bk_worker():
     asyncio.set_event_loop(asyncio.new_event_loop())
     
-    bokeh_tornado = BokehTornado({'/stock_query_viz_app': stock_query_viz_app}, extra_websocket_origins=["stock-query-viz.herokuapp.com"]) ##extra_websocket_origins=["localhost:8000"])
+    bokeh_tornado = BokehTornado(stock_query_viz_app, extra_websocket_origins=["stock-query-viz.herokuapp.com"]) 
+    #bokeh_tornado = BokehTornado({'/stock_query_viz_app': stock_query_viz_app}, extra_websocket_origins=["localhost:8000"])
     bokeh_http = HTTPServer(bokeh_tornado)
     bokeh_http.add_sockets(sockets)
 
