@@ -46,9 +46,10 @@ def stock_query_viz_app(doc):
             
             while attempts < num_request_attempts:
                 
+                time.sleep(timeout)
+                
                 try:
-                    time.sleep(timeout)
-                    
+                                       
                     response = requests.get(url)
 
                     response_data = response.json() 
@@ -63,10 +64,10 @@ def stock_query_viz_app(doc):
                         #every few seconds, plot a message to let the user know we are waiting for the query results
                         waiting_text = 'Querying from Alpha Vantage API ' + '...'*timeout
                         print(waiting_text)
+                        timeout += 1
                         
-                    time.sleep(timeout)
                     attempts += 1
-                    timeout += 1
+                    
 
             #switch to increasing chronological order
             ticker_df = ticker_df.iloc[::-1]   
