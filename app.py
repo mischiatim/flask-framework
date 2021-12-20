@@ -51,10 +51,7 @@ def index():
     resources = bokeh_cdn_resources()
     script = server_document(FLASK_URL + BOKEH_PATH, resources=None)
     return render_template("about_stock_viz.html", script=script, resources=resources) #, template="Flask")
-    #return render_template("embed.html", script=script, resources=resources) #, template="Flask")
     
-
-
 @app.route('/<path:path>', methods=['GET'])
 @cross_origin(origins='*')
 def proxy(path):
