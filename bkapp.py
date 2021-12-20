@@ -1,29 +1,67 @@
+"""
+    Embed bokeh server session into a flask framework
+    Adapted from bokeh-master/examples/howto/serve_embed/flask_gunicorn_embed.py
+"""
+
+import os
+import time
+import asyncio
+import logging
 from threading import Thread
 
-from flask import Flask, render_template, request, redirect
+from tornado.httpserver import HTTPServer
 from tornado.ioloop import IOLoop
 
-from bokeh.embed import server_document
-from bokeh.layouts import column, row
-from bokeh.models import Select, MultiChoice, Toggle
-from bokeh.plotting import figure #,show
-from bokeh.server.server import Server
+from bokeh import __version__ as bokeh_release_ver
+from bokeh.application import Application
+from bokeh.application.handlers import FunctionHandler
+from bokeh.models import Select, MultiChoice, Toggle #ColumnDataSource, Slider
+from bokeh.plotting import figure
+#from bokeh.sampledata.sea_surface_temperature import sea_surface_temperature
+from bokeh.server.server import BaseServer
+from bokeh.server.tornado import BokehTornado
+from bokeh.server.util import bind_sockets
 from bokeh.themes import Theme
+from bokeh.layouts import column, row
+from bokeh.resources import get_sri_hashes_for_version
 
+#My specific imports
 import requests
-import json 
-import time
-import os
-
 import pandas as pd
 from pandas.tseries.holiday import USFederalHolidayCalendar
 
+from config import (
+    cwd,
+    set_bokeh_port,
+    FLASK_PORT,
+    FLASK_ADDR,
 
-app = Flask(__name__)
+    BOKEH_ADDR,
+    BOKEH_PATH,
+    BOKEH_URL,
+    BOKEH_CDN
+)
+
+logging.basicConfig(level=logging.INFO)
+log = logging.getLogger(__name__)
 
 
-def stock_query_viz_app(doc):
+BOKEH_BROWSER_LOGGING = """
+    <script type="text/javascript">
+      Bokeh.set_log_level("debug");
+    </script>
+"""
 
+def bkapp(doc):
+    """ Bokeh App
+
+    Arguments:
+        doc {Bokeh Document} -- bokeh document
+
+    Returns:
+        Bokeh Document --bokeh document with plots and interactive widgets
+    """
+    
     key = os.environ.get('ALPHA_API_KEY')
         
     #create new dataframe of all tickers of potential interest by querying Alpha Vantage
@@ -49,7 +87,7 @@ def stock_query_viz_app(doc):
                 time.sleep(timeout)
                 
                 try:
-                                       
+
                     response = requests.get(url)
 
                     response_data = response.json() 
@@ -65,10 +103,9 @@ def stock_query_viz_app(doc):
                         waiting_text = 'Querying from Alpha Vantage API ' + '...'*timeout
                         print(waiting_text)
                         timeout += 1
-                        
+
                     attempts += 1
                     
-
             #switch to increasing chronological order
             ticker_df = ticker_df.iloc[::-1]   
                     
@@ -173,32 +210,72 @@ def stock_query_viz_app(doc):
     print(starting_text)
     ticker_df_all = create_ticker_df_all()
     
+    doc.theme = Theme(filename=os.path.join(cwd(), 'theme.yaml'))
+    
     layout = row(controls, create_figure())
     
-    doc.add_root(layout)
-    
-    #The following theme has gray background with white dashed grid lines
-    doc.theme = Theme(filename="theme.yaml")
+    return doc.add_root(layout)
 
-    
-@app.route('/', methods=['GET'])
-def stock_query_viz_app_page():
-    script = server_document('http://localhost:5006/stock_query_viz_app')
-    return render_template('about_stock_viz.html', script=script, template="Flask")
 
-def bk_worker():
-    # Can't pass num_procs > 1 in this configuration. If you need to run multiple
-    # processes, see e.g. flask_gunicorn_embed.py
-    server = Server({'/stock_query_viz_app': stock_query_viz_app}, io_loop=IOLoop(), allow_websocket_origin=['127.0.0.1:8000']) #["localhost:8000"])
+def bokeh_cdn_resources():
+    """Create script to load Bokeh resources from CDN based on
+       installed bokeh version.
+
+    Returns:
+        script -- script to load resources from CDN
+    """
+    included_resources = [
+        f'bokeh-{bokeh_release_ver}.min.js',
+        f'bokeh-api-{bokeh_release_ver}.min.js',
+        f'bokeh-tables-{bokeh_release_ver}.min.js',
+        f'bokeh-widgets-{bokeh_release_ver}.min.js'
+    ]
+
+    resources = '\n    '
+    for key, value in get_sri_hashes_for_version(bokeh_release_ver).items():
+        if key in included_resources:
+            resources += '<script type="text/javascript" '
+            resources += f'src="{BOKEH_CDN}/{key}" '
+            resources += f'integrity="sha384-{value}" '
+            resources += 'crossorigin="anonymous"></script>\n    '
+
+    resources += BOKEH_BROWSER_LOGGING
+    return resources
+
+
+def  get_sockets():
+    """bind to available socket in this system
+
+    Returns:
+        sockets, port -- sockets and port bind to
+    """
+    _sockets, _port = bind_sockets('0.0.0.0', 0)
+    set_bokeh_port(_port)
+    return _sockets, _port
+
+
+def bk_worker(sockets, port):
+    """ Worker thread to  run Bokeh Server """
+    _bkapp = Application(FunctionHandler(bkapp))
+    asyncio.set_event_loop(asyncio.new_event_loop())
+
+    websocket_origins = [f"{BOKEH_ADDR}:{port}", f"{FLASK_ADDR}:{FLASK_PORT}"]
+    bokeh_tornado = BokehTornado({BOKEH_PATH: _bkapp},
+                                 extra_websocket_origins=websocket_origins,
+                                 **{'use_xheaders': True})
+
+    bokeh_http = HTTPServer(bokeh_tornado, xheaders=True)
+    bokeh_http.add_sockets(sockets)
+    server = BaseServer(IOLoop.current(), bokeh_tornado, bokeh_http)
     server.start()
     server.io_loop.start()
 
-Thread(target=bk_worker).start()
 
 if __name__ == '__main__':
-    print('Opening single process Flask app with embedded Bokeh application on http://localhost:8000/')
-    print()
-    print('Multiple connections may block the Bokeh app in this configuration!')
-    #print('See "flask_gunicorn_embed.py" for one way to run multi-process')
-    app.run(port=8000)
-
+    bk_sockets, bk_port = get_sockets()
+    t = Thread(target=bk_worker, args=[bk_sockets, bk_port], daemon=True)
+    t.start()
+    bokeh_url = BOKEH_URL.replace('$PORT', str(bk_port))
+    log.info("Bokeh Server App Running at: %s", bokeh_url)
+    while True:
+        time.sleep(0.05)
