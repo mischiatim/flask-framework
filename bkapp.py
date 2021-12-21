@@ -29,6 +29,7 @@ from bokeh.resources import get_sri_hashes_for_version
 import requests
 import pandas as pd
 from pandas.tseries.holiday import USFederalHolidayCalendar
+from retrying import retry
 
 from config import (
     cwd,
@@ -64,6 +65,14 @@ def bkapp(doc):
     
     key = os.environ.get('ALPHA_API_KEY')
         
+    #main workhorse function to get the data from Alpha Vantage API on a specific ticker - using a 'retry' decorator to handle multiple attempts
+    @retry(stop_max_attempt_number=50,wait_random_min=500, wait_random_max=1500)
+    def get_ticker_df_data_from_request(url):
+        response = requests.get(url)
+        response_data = response.json()
+        ticker_df = pd.DataFrame.from_dict(response_data['Time Series (Daily)'],orient='index',dtype='float')
+        return ticker_df
+        
     #create new dataframe of all tickers of potential interest by querying Alpha Vantage
     def create_ticker_df_all():
         
@@ -74,37 +83,45 @@ def bkapp(doc):
 
             url = 'https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&symbol={}&apikey={}'.format(ticker, key)
 
-            #I will give it a certain number of tries on each request, with increasing delay time, in case there is too much traffic
-            
-            num_request_attempts = 20
-            
-            attempts = 0
-            
-            timeout = 1
-            
-            while attempts < num_request_attempts:
-                
-                time.sleep(timeout)
-                
-                try:
+            #New version handling the retries with the decorated function
+            waiting_text = f'Querying {ticker} data from Alpha Vantage API ...'
+            print(waiting_text)
 
-                    response = requests.get(url)
-
-                    response_data = response.json() 
+            ticker_df = get_ticker_df_data_from_request(url)
             
-                    ticker_df = pd.DataFrame.from_dict(response_data['Time Series (Daily)'],orient='index',dtype='float')
+            
+#             # #Old version that handled the retries manually:
+#             #I will give it a certain number of tries on each request, with increasing delay time, in case there is too much traffic
+            
+#             num_request_attempts = 20
+            
+#             attempts = 0
+            
+#             timeout = 1
+            
+#             while attempts < num_request_attempts:
                 
-                    break
+#                 time.sleep(timeout)
+                
+#                 try:
+
+#                     response = requests.get(url)
+
+#                     response_data = response.json() 
+            
+#                     ticker_df = pd.DataFrame.from_dict(response_data['Time Series (Daily)'],orient='index',dtype='float')
+                
+#                     break
                     
-                except KeyError:
+#                 except KeyError:
 
-                    if attempts%3==1:
-                        #every few seconds, plot a message to let the user know we are waiting for the query results
-                        waiting_text = 'Querying from Alpha Vantage API ' + '...'*timeout
-                        print(waiting_text)
-                        timeout += 1
+#                     if attempts%3==1:
+#                         #every few seconds, plot a message to let the user know we are waiting for the query results
+#                         waiting_text = 'Querying from Alpha Vantage API ' + '...'*timeout
+#                         print(waiting_text)
+#                         timeout += 1
 
-                    attempts += 1
+#                     attempts += 1
                     
             #switch to increasing chronological order
             ticker_df = ticker_df.iloc[::-1]   
